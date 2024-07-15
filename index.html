@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        img {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Viewer</h1>
+    <img id="imageDisplay" src="" alt="Converted Image">
+
+    <script src="https://unpkg.com/heic2any/dist/heic2any.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const params = new URLSearchParams(window.location.search);
+            const imageURL = params.get('url');
+
+            if (imageURL) {
+                loadImage(imageURL);
+            } else {
+                document.body.innerHTML += '<p>Please provide an image URL in the query string.</p>';
+            }
+        });
+
+        function loadImage(url) {
+            fetch(url)
+                .then(response => response.blob())
+                .then(blob => {
+                    if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+                        heic2any({
+                            blob: blob,
+                            toType: "image/jpeg",
+                            quality: 0.8
+                        }).then(convertedBlob => {
+                            const objectURL = URL.createObjectURL(convertedBlob);
+                            document.getElementById('imageDisplay').src = objectURL;
+                        }).catch(error => {
+                            console.error('Error converting HEIC image:', error);
+                            alert('Error converting HEIC image. Please try again.');
+                        });
+                    } else {
+                        const objectURL = URL.createObjectURL(blob);
+                        document.getElementById('imageDisplay').src = objectURL;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching image:', error);
+                    alert('Error fetching image. Please check the URL and try again.');
+                });
+        }
+    </script>
+</body>
+</html>
