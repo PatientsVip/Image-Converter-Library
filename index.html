@@ -3,21 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patients VIP Image</title>
+    <title>Patients VIP Image Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f4f4f9;
         }
-        img {
+        header {
+            width: 100%;
+            padding: 15px 0;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .logo {
+            height: 40px;
+            width: auto;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .image-container {
+            width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        img#imageDisplay {
             max-width: 100%;
-            margin: 10px 0;
+            max-height: 80vh;
+            object-fit: contain;
+            transition: transform 0.2s;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        .error {
+            color: #e74c3c;
+            background-color: #fdf0ed;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #c95d63;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #b04e54;
+        }
+        footer {
+            padding: 15px;
+            background-color: #4b7db8;
+            color: white;
+            text-align: center;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <h1>Patients VIP Image Viewer</h1>
-    <img id="imageDisplay" src="" alt="Converted Image">
+    <header>
+        <img src="https://i0.wp.com/patients.vip/wp-content/uploads/2022/12/Patients-3.png?w=724&ssl=1" alt="Patients VIP Logo" class="logo">
+    </header>
+    <div class="content">
+        <div class="image-container">
+            <img id="imageDisplay" src="" alt="Converted Image">
+            <div id="loading" class="loading" style="display: none;"></div>
+        </div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div>
+            <button onclick="reloadImage()">Reload Image</button>
+            <button onclick="downloadImage()">Download Image</button>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2024 Patients VIP. All rights reserved.</p>
+    </footer>
 
     <script src="https://unpkg.com/heic2any/dist/heic2any.js"></script>
     <script>
@@ -28,35 +132,57 @@
             if (imageURL) {
                 loadImage(imageURL);
             } else {
-                document.body.innerHTML += '<p>Please provide an image URL in the query string.</p>';
+                document.getElementById('error').textContent = 'Please provide an image URL in the query string.';
             }
         });
 
         function loadImage(url) {
+            const loadingIndicator = document.getElementById('loading');
+            const errorDisplay = document.getElementById('error');
+            const imageDisplay = document.getElementById('imageDisplay');
+
+            loadingIndicator.style.display = 'block';
+            errorDisplay.textContent = '';
+
             fetch(url)
                 .then(response => response.blob())
                 .then(blob => {
                     if (blob.type === 'image/heic' || blob.type === 'image/heif') {
-                        heic2any({
+                        return heic2any({
                             blob: blob,
                             toType: "image/jpeg",
                             quality: 0.8
-                        }).then(convertedBlob => {
-                            const objectURL = URL.createObjectURL(convertedBlob);
-                            document.getElementById('imageDisplay').src = objectURL;
-                        }).catch(error => {
-                            console.error('Error converting HEIC image:', error);
-                            alert('Error converting HEIC image. Please try again.');
                         });
-                    } else {
-                        const objectURL = URL.createObjectURL(blob);
-                        document.getElementById('imageDisplay').src = objectURL;
                     }
+                    return blob;
+                })
+                .then(convertedBlob => {
+                    const objectURL = URL.createObjectURL(convertedBlob);
+                    imageDisplay.src = objectURL;
                 })
                 .catch(error => {
-                    console.error('Error fetching image:', error);
-                    alert('Error fetching image. Please check the URL and try again.');
+                    console.error('Error fetching or converting image:', error);
+                    errorDisplay.textContent = 'Error fetching or converting image. Please check the URL and try again.';
+                })
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
                 });
+        }
+
+        function reloadImage() {
+            const params = new URLSearchParams(window.location.search);
+            const imageURL = params.get('url');
+            if (imageURL) {
+                loadImage(imageURL);
+            }
+        }
+
+        function downloadImage() {
+            const imageDisplay = document.getElementById('imageDisplay');
+            const link = document.createElement('a');
+            link.href = imageDisplay.src;
+            link.download = 'downloaded_image.jpg';
+            link.click();
         }
     </script>
 </body>
